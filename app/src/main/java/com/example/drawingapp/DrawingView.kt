@@ -19,6 +19,7 @@ import androidx.core.graphics.toColorInt
 
 class DrawingView(context: Context, attrs: AttributeSet): View(context, attrs) {
     private var mDrawPath: CustomPath? = null
+    private var mCanvasBitmap: Bitmap? = null
     private var mDrawPaint: Paint? = null
     private var mCanvasPaint: Paint? = null
     private var mBrushSize: Float = 0.toFloat()
@@ -48,11 +49,16 @@ class DrawingView(context: Context, attrs: AttributeSet): View(context, attrs) {
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-
+        mCanvasBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        canvas = Canvas(mCanvasBitmap!!)
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+
+        mCanvasBitmap?.let {
+            canvas.drawBitmap(it, 0f, 0f, mCanvasPaint)
+        }
 
         mDrawPath?.let {
             mDrawPaint!!.strokeWidth = it.brushThickness
