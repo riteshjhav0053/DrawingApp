@@ -1,18 +1,24 @@
 package com.example.drawingapp
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.Gravity
 import android.view.View
+import android.view.WindowInsetsController
 import android.view.WindowManager
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.SeekBar
+import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.get
 
@@ -26,11 +32,13 @@ class MainActivity : AppCompatActivity() {
 
     private var mImageButtonFGallery: ImageButton? = null
 
-    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let {
-            setBackgroundImage(it)  // function to handle image in your drawing view
+    private val openGalleryLauncher: ActivityResultLauncher<Intent> =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK && result.data != null) {
+                val imageBackground: ImageView = findViewById(R.id.iv_background)
+                imageBackground.setImageURI(result.data?.data)
+            }
         }
-    }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,14 +46,26 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+// Dark icons for light background
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            window.insetsController?.setSystemBarsAppearance(
+                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        }
+
+
         drawingView = findViewById(R.id.drawing_view)
         brushBtn = findViewById(R.id.brush_size_btn)
-        mImageButtonFGallery = findViewById(R.id.ib_gallery) // replace with your ImageButton id
-
-
-        mImageButtonFGallery!!.setOnClickListener {
-            pickImage.launch("image/*")
+        mImageButtonFGallery = findViewById(R.id.ib_gallery)
+        mImageButtonFGallery?.setOnClickListener {
+            val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+            openGalleryLauncher.launch(intent)
         }
+
 
         val eraserBtn: ImageButton = findViewById(R.id.eraser_btn)
 
@@ -65,11 +85,6 @@ class MainActivity : AppCompatActivity() {
             drawingView.enableEraser()
             showBrushSizeDialog()
         }
-    }
-
-    private fun setBackgroundImage(uri: Uri) {
-        val bitmap = MediaStore.Images.Media.getBitmap(contentResolver, uri)
-        drawingView.setBackgroundBitmap(bitmap)  // you’ll implement this in DrawingView
     }
 
 
@@ -141,4 +156,5 @@ class MainActivity : AppCompatActivity() {
             mImageButtonCurrentPaint = view
         }
     }
+
 }
