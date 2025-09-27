@@ -1,5 +1,6 @@
 package com.example.drawingapp
 
+import android.R.attr.path
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
@@ -29,11 +30,42 @@ class DrawingView(context: Context, attrs: AttributeSet): View(context, attrs) {
     private var color = Color.BLACK
     private var canvas: Canvas? = null
     private val mPaths = ArrayList<CustomPath>()
+    private val mUndoPaths = ArrayList<CustomPath>()
     private var lastBrushColor: Int = Color.BLACK
 
 
     init{
         setUpDrawing()
+        setLayerType(LAYER_TYPE_SOFTWARE, null)
+    }
+
+    fun undo(){
+        if(mPaths.isNotEmpty()){
+            mUndoPaths.add(mPaths.removeAt(mPaths.size-1))
+            redrawBitmapFromPaths()
+            invalidate()
+        }
+    }
+
+    private fun redrawBitmapFromPaths() {
+        if (mCanvasBitmap == null) return
+        // Clear the bitmap
+        canvas?.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+        // Replay all paths on the bitmap
+        for (path in mPaths) {
+            val paint = Paint()
+            paint.strokeWidth = path.brushThickness
+            paint.style = Paint.Style.STROKE
+            paint.strokeJoin = Paint.Join.ROUND
+            paint.strokeCap = Paint.Cap.ROUND
+            if (path.isEraser) {
+                paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+            } else {
+                paint.xfermode = null
+                paint.color = path.color
+            }
+            canvas?.drawPath(path, paint)
+        }
     }
 
     private fun setUpDrawing(){
@@ -56,15 +88,20 @@ class DrawingView(context: Context, attrs: AttributeSet): View(context, attrs) {
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        mCanvasBitmap?.let {
-            canvas.drawBitmap(it, 0f, 0f, mCanvasPaint)
-        }
+        mCanvasBitmap?.let { canvas.drawBitmap(it, 0f, 0f, mCanvasPaint) }
 
         mDrawPath?.let {
-            mDrawPaint!!.strokeWidth = it.brushThickness
-            mDrawPaint!!.color = it.color
-            canvas.drawPath(it, mDrawPaint!!)
+            val paint = Paint(mDrawPaint!!)
+            paint.strokeWidth = it.brushThickness
+            if(it.isEraser){
+                paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+            } else {
+                paint.xfermode = null
+                paint.color = it.color
+            }
+            canvas.drawPath(it, paint)
         }
+
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -72,10 +109,12 @@ class DrawingView(context: Context, attrs: AttributeSet): View(context, attrs) {
         val touchX = event?.x
         val touchY = event?.y
 
-        when(event?.action){
+        when(event?.action) {
             MotionEvent.ACTION_DOWN -> {
-                mDrawPath = CustomPath(color, if (isEraser) mEraserSize else mBrushSize)
-
+                mDrawPath = CustomPath(
+                    color = if (isEraser) Color.TRANSPARENT else color,
+                    if (isEraser) mEraserSize else mBrushSize, isEraser
+                )
                 mDrawPath!!.color = color
                 mDrawPath!!.brushThickness = if (isEraser) mEraserSize else mBrushSize
                 mDrawPath!!.reset()
@@ -86,6 +125,7 @@ class DrawingView(context: Context, attrs: AttributeSet): View(context, attrs) {
                 }
                 invalidate()
             }
+
             MotionEvent.ACTION_MOVE -> {
                 if (touchX != null) {
                     if (touchY != null) {
@@ -94,19 +134,28 @@ class DrawingView(context: Context, attrs: AttributeSet): View(context, attrs) {
                 }
                 invalidate()
             }
-            MotionEvent.ACTION_UP -> {
 
-                mDrawPath?.let {
-                    canvas?.drawPath(it, mDrawPaint!!)
-                    mPaths.add(it) // keep it in history if needed
+            MotionEvent.ACTION_UP -> {
+                mDrawPath?.let { path ->
+                    val paint = Paint(mDrawPaint!!)
+                    paint.strokeWidth = path.brushThickness
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeJoin = Paint.Join.ROUND
+                    paint.strokeCap = Paint.Cap.ROUND
+                    if (path.isEraser) {
+                        paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+                    } else {
+                        paint.xfermode = null
+                        paint.color = path.color
+                    }
+                    canvas?.drawPath(path, paint)
+                    mPaths.add(path)
                 }
                 mDrawPath = null
-
-
                 invalidate()
             }
-            else -> return false
 
+            else -> return false
         }
 
         return true
@@ -138,6 +187,9 @@ class DrawingView(context: Context, attrs: AttributeSet): View(context, attrs) {
     }
 
     fun enableEraser() {
+        if (!isEraser) {
+            lastBrushColor = color // store current brush color
+        }
         isEraser = true
         mDrawPaint!!.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
         mDrawPaint!!.strokeWidth = if (mEraserSize > 0) mEraserSize else mBrushSize }
@@ -162,10 +214,9 @@ class DrawingView(context: Context, attrs: AttributeSet): View(context, attrs) {
         return mEraserSize / resources.displayMetrics.density
     }
 
-
-
-    internal inner class CustomPath(var color: Int,
-        var brushThickness: Float): Path() {
-
-    }
+    internal inner class CustomPath(
+        var color: Int,
+        var brushThickness: Float,
+        var isEraser: Boolean = false
+    ) : Path()
 }

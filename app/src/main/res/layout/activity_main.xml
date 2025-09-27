@@ -168,6 +168,13 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/download__10_" />
 
+        <ImageButton
+            android:id="@+id/undo_btn"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/baseline_undo_24" />
+
     </LinearLayout>
 
 

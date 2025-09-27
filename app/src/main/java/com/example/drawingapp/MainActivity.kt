@@ -69,6 +69,9 @@ class MainActivity : AppCompatActivity() {
 
         val eraserBtn: ImageButton = findViewById(R.id.eraser_btn)
 
+        val undoBtn: ImageButton = findViewById(R.id.undo_btn)
+
+
         val linearLayoutPaintColors = findViewById<LinearLayout>(R.id.ll_colorPalette)
 
         mImageButtonCurrentPaint = linearLayoutPaintColors[1] as ImageButton
@@ -79,6 +82,10 @@ class MainActivity : AppCompatActivity() {
         brushBtn.setOnClickListener {
             drawingView.disableEraser()
             showBrushSizeDialog()
+        }
+
+        undoBtn.setOnClickListener {
+            drawingView.undo()
         }
 
         eraserBtn.setOnClickListener {
