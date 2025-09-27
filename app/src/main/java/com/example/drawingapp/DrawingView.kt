@@ -15,6 +15,7 @@ import android.view.View
 import androidx.core.graphics.createBitmap
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
+import android.graphics.Rect
 import androidx.core.graphics.toColorInt
 
 
@@ -32,6 +33,8 @@ class DrawingView(context: Context, attrs: AttributeSet): View(context, attrs) {
     private val mPaths = ArrayList<CustomPath>()
     private val mUndoPaths = ArrayList<CustomPath>()
     private var lastBrushColor: Int = Color.BLACK
+    private var backgroundBitmap: Bitmap? = null
+
 
 
     init{
@@ -46,6 +49,12 @@ class DrawingView(context: Context, attrs: AttributeSet): View(context, attrs) {
             invalidate()
         }
     }
+
+    fun setBackgroundBitmap(bitmap: Bitmap) {
+        backgroundBitmap = bitmap
+        invalidate()  // Redraw to apply the new background
+    }
+
 
     private fun redrawBitmapFromPaths() {
         if (mCanvasBitmap == null) return
@@ -87,6 +96,11 @@ class DrawingView(context: Context, attrs: AttributeSet): View(context, attrs) {
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+
+        backgroundBitmap?.let {
+            val dstRect = Rect(0, 0, width, height)
+            canvas.drawBitmap(it, null, dstRect, mCanvasPaint)
+        }
 
         mCanvasBitmap?.let { canvas.drawBitmap(it, 0f, 0f, mCanvasPaint) }
 
